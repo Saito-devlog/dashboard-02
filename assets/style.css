@@ -1,0 +1,147 @@
+body {
+  background-color: #F5F5F5;
+  margin: 0;
+  font-family: "Arial", "Verdana", sans-serif ;
+  border-top: 4px solid #D9D9D9;
+}
+h2{
+  font-size:22px;
+  font-weight:600;
+  color:#767676;
+  margin-bottom: 0;
+  margin-top:0;
+}
+h3{
+  color:#767676;
+  margin-bottom: 0;
+  margin-top:3%;
+}
+.navbar {
+  padding: 20px 32px;
+  display: flex;
+  gap: 32px;
+  text-decoration: none;
+  font-size: 24px;
+}
+.nav-link {
+  font-weight: 900;
+  color: #6B7280; /* グレー */
+  padding-bottom: 6px;
+  text-decoration: none !important;
+  position: relative;
+  padding-bottom: 5px;
+}
+.nav-link:hover {
+  font-weight: 900;
+  color: #093186;
+}
+
+.nav-link.active {
+  font-weight: 900;
+  color: #093186; /* メインブルー */
+}
+
+.nav-link.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -4px;
+  width: 100%;
+  height: 3px;
+  background-color: #093186;
+  border-radius: 2px;
+}
+.comment-box {
+  display: flex;
+  align-items: center;
+  background-color: #EEF4FF;
+  border-radius: 12px;
+  overflow: hidden;  /* 角丸を維持 */
+  margin-left:30px;
+  width:100%;
+  margin-top:2rem;
+  margin-bottom:1rem;
+}
+
+.comment-icon {
+  background-color: #DCE8FF;
+  padding: 14px;
+  width:30px;
+}
+
+.comment-text {
+  font-size: 0.9rem;
+  color: #333333;
+  line-height: 1.5;
+  margin-left:2%;
+}
+
+.DateInput_input {
+    height: 60px;
+    display: flex;
+    align-items: center;
+    width:50px;
+}
+/*日付の箇所*/
+.dash-datepicker{
+  width:250px;
+  background-color: none;
+  margin-top:1%;
+}
+/*Revenueのテキスト*/
+
+/*差分テキスト*/
+.kpi-change {
+    margin-top: 2%;
+    font-size: 14px;
+    font-weight:600;
+}
+
+/*スパークライン*/
+.kpi-sparkline{
+  width:100px;
+  height:40px;
+  background-color:#cccccc;
+}
+
+/*KPIバー*/
+.progress-bar {
+    width: 25%;
+    height: 6px;
+    background-color: #E5E7EB;  /* 薄グレー */
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top:1%;
+}
+
+.progress-bar-fill {
+  /* ← 動的に変える */
+    height: 100%;
+    background-color: #2563EB;  /* ブルー */
+    border-radius: 4px;
+}
+
+.kpi-change.positive {
+  color: #16a34a;
+}
+
+.kpi-change.negative {
+  color: #dc2626;
+}
+
+/* DeepDive カレンダー */
+.box{
+  width:250px;
+  margin-left:1%;
+}
+/* DeepDive カレンダーとキャンペーンのbox */
+.row{
+  display:flex;
+}
+.box_bottom{
+  width:600px;
+  margin-left:1%;
+}
+.row_bottom{
+  display:flex;
+}
