@@ -18,7 +18,20 @@ seo_df = create_seo_data()
 ad_df = create_ad_data()
 
 print("Callback triggered")
-print(seo_df.shape)
+#print(seo_df.shape)
+#print(ad_df["CPC"])
+
+
+# 増減率専用関数
+def calculate_change(current_value, previous_value):
+
+    current_value = float(current_value)
+    previous_value = float(previous_value)
+
+    if previous_value == 0:
+        return 0.0
+
+    return (current_value - previous_value) / previous_value
 
 #CPA折れ線グラフ
 @callback(
@@ -84,13 +97,94 @@ def update_cpa(start, end, campaign):
     #Outputの順番=returnの順番、Outputの1番目=fig
     return fig
 
+
+#コメント生成関数
+def generate_comment(diff_cpa, diff_cpc):
+
+    diff_cpa = float(diff_cpa or 0)
+    cpc_diff = float(diff_cpc or 0)
+
+    # CPA判定
+    if diff_cpa > 0.1:
+        cpa_status = f"{abs(diff_cpa):.1%}悪化"
+    elif diff_cpa < -0.1:
+        cpa_status = f"{abs(diff_cpa):.1%}改善"
+    else:
+        cpa_status = "横ばい"
+
+     # CPC判定
+    if cpc_diff >= 0.03:
+        cpc_status = "改善"
+    elif cpc_diff <= -0.03:
+        cpc_status = "悪化"
+    else:
+        cpc_status = "横ばい"
+
+    return html.Span([
+        "CPAは",
+        html.Strong(cpa_status),
+        "。主因はCPC",
+        html.Strong(cpc_status)
+    ])
+
+
+@callback(
+    Output("comment-output", "children"),
+    Input("kpi-data", "data")
+)
+
+def update_comment(data):
+
+    if data is None:
+        return ""
+
+    diff_cpa = data["diff_cpa"]
+    diff_cpc = data["diff_cpc"]
+
+    return generate_comment(diff_cpa, diff_cpc)
+
+@callback(
+    Output("kpi-data", "data"),
+    Input("date-range", "start_date"),
+    Input("date-range", "end_date"),
+    Input("campaign-dropdown", "value"),
+)
+def update_kpi_data(start, end, campaign):
+
+    df = create_ad_data()
+    df["date"] = pd.to_datetime(df["date"])
+
+    if start and end:
+        start = pd.to_datetime(start)
+        end = pd.to_datetime(end)
+        df = df[(df["date"] >= start) & (df["date"] <= end)]
+
+    if campaign:
+        df = df[df["campaign"] == campaign]
+
+    df = df.sort_values("date")
+
+    latest_7 = df.tail(7)
+    prev_7 = df.tail(14).head(7)
+
+    diff_cpa = calculate_change(
+        latest_7["CPA"].mean(),
+        prev_7["CPA"].mean()
+    )
+
+    diff_cpc = calculate_change(
+        latest_7["CPC"].mean(),
+        prev_7["CPC"].mean()
+    )
+
+    return {
+        "diff_cpa": diff_cpa,
+        "diff_cpc": diff_cpc
+    }
+
 #ここからレイアウト
 layout = html.Div([
-    #ナビゲーションリンク
-    html.Nav([
-        html.A("Overview", href="/", id="nav-overview", className="nav-link"),
-        html.A("Deep Dive", href="/deepdive", id="nav-deepdive", className="nav-link"),
-    ], className="navbar"),
+    #ナビゲーションリンクはapp.pyに記述
     #サマリー
     html.Div([
         # アイコン部分
@@ -102,12 +196,14 @@ layout = html.Div([
             className="comment-icon"
     ),
         # テキスト部分
-        html.Div(
-            "CPAは+12%悪化。主因はCPC上昇。",
-            className="comment-text"
+        html.Div([
+        dcc.Store(id="kpi-data"),
+        html.Div(id="comment-output")
+        ],
+        id="deepdive-text",
+        className="comment-text"
         )
-    ],
-    className="comment-box"
+    ],className="comment-box"
 ),
     # 上段：日付とキャンペーン
     html.Div([
@@ -155,8 +251,8 @@ layout = html.Div([
                 sort_action="native",
                 page_size=5,
                 #style_header → ヘッダー全体
-                style_header={"font-weight": "bold","font-size":"1rem"}
-    )
+                style_header={"padding":"1.2%","font-weight": "bold","font-size":"1.2rem"},
+            )  
             ], className="box_bottom"),
 
     ], className="row_bottom"),

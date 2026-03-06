@@ -1,0 +1,21 @@
+from dash import html
+
+def generate_deepdive_comment(df):
+
+    avg_cpa = df["cpa"].mean()
+    recent_cpa = df["cpa"].tail(7).mean()
+
+    if recent_cpa > avg_cpa:
+        trend = "上昇傾向"
+    else:
+        trend = "改善傾向"
+
+    return html.Div([
+        "CPAは直近期間で ",
+        html.Strong(trend),
+        " です。",
+
+        html.Br(),
+
+        "特定期間での変動が大きいため、入札単価やキャンペーン配分の見直しを検討してください。"
+    ])

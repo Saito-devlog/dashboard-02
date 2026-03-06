@@ -1,11 +1,11 @@
 body {
-  background-color: #F5F5F5;
+  background-color: #f4f6f9;
   margin: 0;
-  font-family:"'Courier New', monospace";
+  font-family: "Inter", sans-serif;
   border-top: 4px solid #D9D9D9;
 }
 h2{
-  font-size:22px;
+  font-size:28px;
   font-weight:600;
   color:#767676;
   margin-bottom: 0;
@@ -14,22 +14,38 @@ h2{
 h3{
   color:#767676;
   margin-bottom: 0;
-  margin-top:3%;
+  margin-top:15%;
+}
+#traffic_value{
+  font-size:28px;
+  margin-top:0;
+  margin-bottom:0;
+}
+#roas_value{
+  font-size:28px;
+  margin-top:0;
+  margin-bottom:0;
+}
+#revenue_value{
+  font-weight: 900;
+  font-size:36px;
+  margin-top:0;
+  color:#333333;
+  margin-bottom:0;
 }
 .navbar {
   padding: 20px 32px;
   display: flex;
   gap: 32px;
-  text-decoration: none;
   font-size: 24px;
 }
 .nav-link {
   font-weight: 900;
-  color: #6B7280; /* グレー */
-  padding-bottom: 6px;
-  text-decoration: none !important;
+  color: #093186;
+  text-decoration: none;
   position: relative;
-  padding-bottom: 5px;
+  font-size:2rem;
+  display: inline-block;
 }
 .nav-link:hover {
   font-weight: 900;
@@ -38,7 +54,9 @@ h3{
 
 .nav-link.active {
   font-weight: 900;
-  color: #093186; /* メインブルー */
+  color: #093186; 
+  border-bottom:2px solid #093186;
+  padding-bottom:2px;
 }
 
 .nav-link.active::after {
@@ -58,7 +76,7 @@ h3{
   border-radius: 12px;
   overflow: hidden;  /* 角丸を維持 */
   margin-left:30px;
-  width:100%;
+  width:95%;
   margin-top:2rem;
   margin-bottom:1rem;
 }
@@ -70,17 +88,22 @@ h3{
 }
 
 .comment-text {
-  font-size: 0.9rem;
+  font-size: 1.2rem;
   color: #333333;
-  line-height: 1.5;
-  margin-left:2%;
+  line-height: 2%;
+  margin-left:1%;
+  padding:1% 1%;
 }
 
-.DateInput_input {
-    height: 60px;
+#date_filter,
+#date-range{
+    height: 40px;
     display: flex;
     align-items: center;
-    width:50px;
+    width:60px;
+}
+.dash-dropdown-trigger{
+  height:40px;
 }
 /*日付の箇所*/
 .dash-datepicker{
@@ -93,7 +116,7 @@ h3{
 /*差分テキスト*/
 .kpi-change {
     margin-top: 2%;
-    font-size: 14px;
+    font-size: 1.2rem;
     font-weight:600;
 }
 
@@ -106,9 +129,10 @@ h3{
 
 /*KPIバー*/
 .progress-bar {
-    width: 25%;
+    width: 100%;
+    max-width: 300px;
     height: 6px;
-    background-color: #E5E7EB;  /* 薄グレー */
+    background-color: #e1e1e1;  /* 薄グレー */
     border-radius: 4px;
     overflow: hidden;
     margin-top:1%;
@@ -119,29 +143,69 @@ h3{
     height: 100%;
     background-color: #2563EB;  /* ブルー */
     border-radius: 4px;
+    width: 50%;
 }
 
-.kpi-change.positive {
-  color: #16a34a;
-}
-
-.kpi-change.negative {
-  color: #dc2626;
-}
 
 /* DeepDive カレンダー */
 .box{
   width:250px;
-  margin-left:1%;
+  margin-left:2%;
 }
 /* DeepDive カレンダーとキャンペーンのbox */
 .row{
   display:flex;
 }
 .box_bottom{
-  width:600px;
-  margin-left:1%;
+  width:46%;
+  margin-left:2%;
 }
 .row_bottom{
   display:flex;
+}
+
+.bottom-kpi-card{
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+  width:20%;
+  margin-left:2.5%;
+  margin-bottom:5%;
+}
+h4#revenue_value{
+  font-size:2.8rem;
+}
+h4#traffic_value,
+h4#roas_value{
+  color:#666666;
+  font-weight: 900;
+}
+h4#kpi-cpa,
+h4#kpi-cvr,
+h4#kpi-conversion,
+h4#kpi-traffic{
+  font-size:3.3rem;
+  margin-top:0;
+  margin-bottom:0;
+}
+span#diff_traffic,
+span#diff_conversion,
+span#diff_cvr,
+span#diff_cpa{
+  font-size:1.2rem;
+}
+/*DeepDiveのテーブルセル */
+.dash-spreadsheet-inner td {
+    background-color: white;
+    padding-top: 2%;
+}
+
+/*上昇と下降の色 */
+.kpi-change.positive {
+  color: #16a34a;
+}
+
+.kpi-change.negative {
+  color: #dc2626;
 }

@@ -74,4 +74,4 @@ def get_filtered_ad_data(start_date, end_date, campaign=None):
     if campaign:
         filtered = filtered[filtered["campaign"] == campaign]
 
-    return filtered
+    return filtered.copy()

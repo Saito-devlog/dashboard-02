@@ -27,7 +27,7 @@ latest_date = ad_df["date"].max()
 
 #最新日から7日間さかのぼったデータ
 current_period = ad_df[
-    ad_df["date"] > latest_date - pd.Timedelta(days=7)
+    ad_df["date"] >= latest_date - pd.Timedelta(days=7)
 ]
 
 #直近7日のさらに前の7日間
@@ -61,35 +61,68 @@ rev_growth = calc_growth(ad_df, "revenue")
 traffic_growth = calc_growth(ad_df, "sessions")
 roas_growth = calc_growth(ad_df, "ROAS")
 
+#月単位にまとめる（折れ線グラフで使う）
+ad_df["date"] = pd.to_datetime(ad_df["date"])
+
+ad_df["month"] = (
+    ad_df["date"]
+    .dt.to_period("M")
+    .dt.to_timestamp()
+)
+
+monthly_df = (
+    ad_df
+    .groupby(["month", "campaign"], as_index=False)
+    .agg({"sessions": "sum"})
+)
+#週単位にまとめる（折れ線グラフで使う）
+ad_df["week"] = (
+    ad_df["date"]
+    .dt.to_period("W-MON")
+    .dt.to_timestamp()
+)
+
+weekly_df = (
+    ad_df
+    .groupby(["week", "campaign"], as_index=False)
+    .agg({"sessions": "sum"})
+)
 
 #日付変える→start_date, end_dateが変わる→callback発動→フィルター→グラフ更新
+#returnの位置と合わせる
 @callback(
     #中央の折れ線グラフ
     Output("main_line_chart", "figure"),
+
     #右の円グラフ
     Output("pie_chart", "figure"),
     #Revenue、childrenはdivの中身
     Output("revenue_value", "children"),
     #Revenueの数字、childrenはdivの中身
     Output("revenue_growth", "children"),
+    Output("revenue_growth", "className"),
     #Traffic、childrenはdivの中身
     Output("traffic_value", "children"),
     #Trafficの数字、childrenはdivの中身
     Output("traffic_growth", "children"),
+    Output("traffic_growth", "className"),
     #ROAS、childrenはdivの中身
     Output("roas_value", "children"),
     #ROASの数字、childrenはdivの中身
     Output("roas_growth", "children"),
+    Output("roas_growth", "className"),
     #日付フィルター、スタート日
     Input("date_filter", "start_date"),
     #日付フィルター、終了日
     Input("date_filter", "end_date"),
+    #タブ切り替え
+    Input("tab-switch", "value"),
 )
 
 
 
 #日付と連動させる
-def update_dashboard(start_date, end_date):
+def update_dashboard(start_date, end_date, tabs):
 
     end_date = pd.to_datetime(end_date)
     start_1m = end_date - pd.DateOffset(months=1)
@@ -100,22 +133,57 @@ def update_dashboard(start_date, end_date):
         ]
 
     # 折れ線グラフ
+    if tabs == "month":
+        filtered_df["period"] = (
+            filtered_df["date"]
+            .dt.to_period("M")
+            .dt.to_timestamp()
+        )
+    else:
+        filtered_df["period"] = (
+            filtered_df["date"]
+            .dt.to_period("W-MON")
+            .dt.to_timestamp()
+        )
+
+    grouped_df = (
+        filtered_df
+        .groupby(["period", "campaign"], as_index=False)
+        .agg({"sessions": "sum"})
+    )
+
     fig = px.line(
-        filtered_df,
-        x="date",
+        grouped_df,
+        x="period",
         y="sessions",
         color="campaign",
-        title="MONTH"
-        )
-    
+        color_discrete_map={
+            "Brand": "#00bfff",
+            "Retargeting": "#1877F2",
+            "Non-Brand": "#b0c4de"
+        }
+    )
+
     #円グラフ・キャンペーンごとのrevenue
     pie_data = filtered_df.groupby("campaign")["revenue"].sum().reset_index()
     
     fig_pie = px.pie(
         pie_data,
         names="campaign",
-        values="revenue"
+        values="revenue",
+        color="campaign",
+        #穴をあける
+        hole=0.4,
+        height=513, 
+        color_discrete_map={
+        "Brand": "#6495ed",
+        "Retargeting": "#1877F2",
+        "Non-Brand": "#b0c4de",
+        }
     )
+    fig_pie.update_layout(
+    margin=dict(t=30, b=30, l=40, r=0),
+)
 
     # KPI計算
     total_revenue = filtered_df["revenue"].sum()
@@ -127,17 +195,39 @@ def update_dashboard(start_date, end_date):
     traffic_growth = calc_growth(filtered_df, "sessions")
     roas_growth = calc_growth(filtered_df, "ROAS")
 
+    #Revenuneの増減の数字
+    rev_growth_text = f"{rev_growth*100:+.1f}%"
+    rev_growth_class = get_growth_class(rev_growth)
+
+    #Trafficの増減の数字
+    traffic_growth_text = f"{traffic_growth*100:+.1f}%"
+    traffic_growth_class = get_growth_class(traffic_growth)
+    
+    #ROASの増減の数字
+    roas_growth_text = f"{roas_growth*100:+.1f}%"
+    roas_growth_class = get_growth_class(roas_growth)
+    #矢印を入れる
+    arrow = "↑" if rev_growth >= 0 else "↓"
+    rev_growth_text = f"{arrow} {rev_growth*100:+.1f}%"
+    rev_growth_class = get_growth_class(rev_growth)
+
     return (
         fig,
         fig_pie,
-        f"¥{total_revenue:,.0f}",
-        f"{rev_growth*100:+.1f}%",
+        f"{int(total_revenue / 1000):,}k",
+        traffic_growth_text,
+        traffic_growth_class,
         f"{total_sessions:,}",
-        f"{traffic_growth*100:+.1f}%",
+        rev_growth_text,
+        rev_growth_class,
         f"{avg_roas:.2f}",
-        f"{roas_growth*100:+.1f}%"
+        roas_growth_text,
+        roas_growth_class,
     )
 
+#左のKPIカードの差分テキスト／className切り替えるための関数
+def get_growth_class(value):
+    return "kpi-change positive" if value >= 0 else "kpi-change negative"
 
 #下のKPIカード用の集計関数
 def calculate_kpis(filtered_df):
@@ -160,12 +250,62 @@ def filter_by_date(df, start_date, end_date):
         (df["date"] <= pd.to_datetime(end_date))
     ]
 
+
+#コメント生成関数
+def generate_comment(diff_cpa, diff_cvr):
+
+    diff_cpa = float(diff_cpa or 0)
+    diff_cvr = float(diff_cvr or 0)
+
+    # CPA判定
+    if diff_cpa > 0.1:
+        cpa_status = f"{abs(diff_cpa):.1%}悪化"
+    elif diff_cpa < -0.1:
+        cpa_status = f"{abs(diff_cpa):.1%}改善"
+    else:
+        cpa_status = "横ばい"
+
+    # CVR判定
+    if diff_cvr >= 0.03:
+        cvr_status = "改善"
+    elif diff_cvr <= -0.03:
+        cvr_status = "悪化"
+    else:
+        cvr_status = "横ばい"
+    print(type(diff_cpa), diff_cpa)
+    
+    return html.Span([
+        "広告CPAが直近期間で",
+        html.Strong(cpa_status),
+        "。一方でSEO経由CVRは",
+        html.Strong(cvr_status),
+        "傾向。"
+    ])
+
 # 増減率専用関数
 def calculate_change(current_value, previous_value):
+
+    current_value = float(current_value)
+    previous_value = float(previous_value)
+
     if previous_value == 0:
-        return 0
-    #(今 - 前) ÷ 前
+        return 0.0
+
     return (current_value - previous_value) / previous_value
+
+#増減の色を切り替える関数（CSSで設定している）
+def get_change_class(change, reverse=False):
+
+    # 0は色つけないならここで処理
+    if change == 0:
+        return "kpi-change neutral"
+
+    if reverse:
+        is_positive = change < 0
+    else:
+        is_positive = change >= 0
+
+    return f"kpi-change {'positive' if is_positive else 'negative'}"
 
 #下のKPIカード用のコールバック
 @callback(
@@ -173,22 +313,26 @@ def calculate_change(current_value, previous_value):
     #Trafic差分
     Output("diff_traffic", "children"),
     Output("diff_traffic", "className"),
+    Output("kpi-traffic", "className"),
     #cvr差分
     Output("diff_cvr", "children"),
     Output("diff_cvr", "className"),
+    Output("kpi-cvr", "className"),
     #conversion差分
     Output("diff_conversion", "children"),
     Output("diff_conversion", "className"),
+    Output("kpi-conversion", "className"),
     #cpa差分
     Output("diff_cpa", "children"),
-    Output("diff_cpa", "className"),
+    Output("diff_cpa", "className",),
+    Output("kpi-cpa", "className"),
     Output("kpi-conversion", "children"),
     Output("kpi-cvr", "children"),
     Output("kpi-cpa", "children"),
+    Output("comment-text", "children"),
     Input("date_filter", "start_date"),
     Input("date_filter", "end_date"),
 )
-
 
 #update_kpis
 def update_kpis(start_date, end_date):
@@ -222,226 +366,67 @@ def update_kpis(start_date, end_date):
     diff_conversion = calculate_change(conversions, prev_conversions)
     conversions_change_class = get_change_class(diff_conversion)
 
-    # cpa増減
+    # cpa増減(cpaは増えるとよくないから)
     diff_cpa = calculate_change(cpa, prev_cpa)
-    cpa_change_class = get_change_class(diff_cpa)
+    cpa_change_class = get_change_class(diff_cpa, reverse=True)
 
+    comment_text = generate_comment(diff_cpa, diff_cvr)
+
+
+   #Dashは、変数名が同じでもOutputの順番に値を当てはめるだけ 
     return (
         f"{sessions:,}",
         f"{change:+.1%}",
         change_class,
+        change_class,
         f"{diff_cvr:+.1%}",
+        cvr_change_class,
         cvr_change_class,
         f"{diff_conversion:+.1%}",
         conversions_change_class,
+        conversions_change_class,
         f"{diff_cpa:+.1%}",
+        cpa_change_class,
         cpa_change_class,
         f"{conversions:,}",
         f"{cvr:.2%}",
         f"¥{cpa:,.0f}",
+        comment_text
     )
 
-#スパークラインは7日移動平均
-
-#増減の色を切り替える関数（CSSで設定している）
-def get_change_class(change):
-    return f"kpi-change {'positive' if change >= 0 else 'negative'}"
-
-
-# ---スパークライン Traffic ----------------------
 #日時データを作る
 ad_df["revenue_MA7"] = ad_df["revenue"].rolling(7).mean()
 
 #差分計算
-latest_7 = ad_df["revenue"].tail(7).sum()
-prev_7 = ad_df["revenue"].tail(14).head(7).sum()
-diff = (latest_7 - prev_7) / prev_7
+latest_7_revenue = ad_df["revenue"].tail(7).sum()
+prev_7_revenue = ad_df["revenue"].tail(14).head(7).sum()
+
+diff = (latest_7_revenue - prev_7_revenue) / prev_7_revenue
+
+
+
 #表示確認
 #print(ad_df["revenue_MA7"])
 #print(latest_7)
 #print(prev_7)
 
-def create_sparkline(df, metric, positive_is_good=True):
-
-    ma_col = f"{metric}_MA7"
-
-    trend = df[ma_col].iloc[-1] - df[ma_col].iloc[-3]
-
-    if positive_is_good:
-        color = "#16a34a" if trend > 0 else "#dc2626"
-    else:
-        color = "#16a34a" if trend < 0 else "#dc2626"
-
-    fig = go.Figure()
-
-    # 元データ（薄い）
-    fig.add_trace(go.Scatter(
-        x=df["date"],
-        y=df[metric],
-        mode="lines",
-        line=dict(width=1, color="rgba(0,0,0,0.15)"),
-        hoverinfo="skip",
-        showlegend=False
-    ))
-
-    # 移動平均
-    fig.add_trace(go.Scatter(
-        x=df["date"],
-        y=df[ma_col],
-        mode="lines",
-        line=dict(width=2, color=color),
-        showlegend=False
-    ))
-
-    fig.update_layout(
-        height=60,
-        margin=dict(l=0, r=0, t=0, b=0),
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-    )
-
-    return fig
-
-@callback(
-    Output("revenue-sparkline", "figure"),
-    Input("revenue-sparkline", "id")
-)
-
-def update_revenue(value):
-    # 日次で集計
-    df_daily = (
-        ad_df.groupby("date")
-        .agg({
-            "sessions": "sum",
-            "cost": "sum",
-            "conversions": "sum",
-            "revenue": "sum"
-        })
-        .reset_index()
-    )
-
-    # 移動平均
-    df_daily["revenue_MA7"] = df_daily["revenue"].rolling(7).mean()
-    fig = create_sparkline(df_daily, "revenue", True)
-
-    return fig
-
-# ---スパークライン Traffic ----------------------
-df_daily = (
-    ad_df.groupby("date")
-    .agg({
-        "sessions": "sum",
-        "cost": "sum",
-        "conversions": "sum",
-        "revenue": "sum"
-    })
-    .reset_index()
-)
-def create_sparkline_ma_only(df, metric, positive_is_good=True):
-
-    ma_col = f"{metric}_MA7"
-
-    trend = df[ma_col].iloc[-1] - df[ma_col].iloc[-3]
-
-    if positive_is_good:
-        color = "#16a34a" if trend > 0 else "#dc2626"
-    else:
-        color = "#16a34a" if trend < 0 else "#dc2626"
-
-    fig = go.Figure()
-
-    # 移動平均だけ
-    fig.add_trace(go.Scatter(
-        x=df["date"],
-        y=df[ma_col],
-        mode="lines",
-        line=dict(width=2, color=color),
-        showlegend=False
-    ))
-
-    fig.update_layout(
-        height=30,
-        margin=dict(l=0, r=0, t=0, b=0),
-        xaxis=dict(visible=False),
-        yaxis=dict(visible=False),
-    )
-
-    return fig
-#@callback(
-#    Output("traffic-sparkline", "figure"),
-#    Input("traffic-sparkline", "id")
-#)
-def update_traffic(_):
-
-    df_daily = (
-        ad_df.groupby("date")
-        .agg({"sessions": "sum"})
-        .reset_index()
-    )
-
-    df_daily["sessions_MA7"] = df_daily["sessions"].rolling(7).mean()
-
-    fig = create_sparkline_ma_only(df_daily, "sessions", True)
-
-    return fig
-
-df_daily["sessions_MA7"] = df_daily["sessions"].rolling(7).mean()
-
-## ---スパークライン ROAS ----------------------
-df_daily = (
-    ad_df.groupby("date")
-    .agg({
-        "sessions": "sum",
-        "cost": "sum",
-        "conversions": "sum",
-        "revenue": "sum"
-    })
-    .reset_index()
-)
-
-df_daily["ROAS"] = df_daily["revenue"] / df_daily["cost"]
-df_daily["ROAS_MA7"] = df_daily["ROAS"].rolling(7).mean()
-
-
-def update_roas(_):
-
-    df_daily = (
-        ad_df.groupby("date")
-        .agg({
-            "cost": "sum",
-            "revenue": "sum"
-        })
-        .reset_index()
-    )
-
-    df_daily["ROAS"] = df_daily["revenue"] / df_daily["cost"]
-    df_daily["ROAS_MA7"] = df_daily["ROAS"].rolling(7).mean()
-
-    fig = create_sparkline_ma_only(df_daily, "ROAS", True)
-
-    return fig
-
 
 #ここからレイアウト
 layout = html.Div([
-    #ナビゲーションリンク
-    html.Nav([
-        html.A("Overview", href="/", id="nav-overview", className="nav-link"),
-        html.A("Deep Dive", href="/deepdive", id="nav-deepdive", className="nav-link"),
-    ], className="navbar"),
+    #ナビゲーションリンクはapp.pyに記述
     #サマリー
     html.Div([
         # アイコン部分
         html.Div(
             html.Img(
                 src="/assets/graph.png",
-                style={"width": "33px"}
+                style={"width": "35px"}
             ),
             className="comment-icon"
     ),
         # テキスト部分
         html.Div(
-            "広告CPAが直近14日で+18%悪化。一方でSEO経由CVRは改善傾向",
+            id="comment-text",
             className="comment-text"
         )
     ],
@@ -456,7 +441,7 @@ layout = html.Div([
     max_date_allowed=ad_df["date"].max(),
     start_date=ad_df["date"].min(),
     end_date=ad_df["date"].max()
-)], style={"margin-left":"1rem","margin-top":"2rem"}),
+)], style={"margin-left":"2rem","margin-top":"2rem","margin-bottom":"2rem"}),
 
     # 左エリア（Revenue、Traffic、ROAS）
     html.Div([
@@ -466,16 +451,18 @@ layout = html.Div([
             html.Div([
                 html.H2("Revenue"),
                 html.H4(id="revenue_value"),
-                # 差分とスパークライン
+                # 差分
                 html.Div([
                 html.Span(id="revenue_growth"),
-                dcc.Graph(
-                id="revenue-sparkline",
-                config={"displayModeBar": False},
-                style={"width": "80px","height": "30px","padding-left":"1%"},
-                className="sparkline"
-            ) ],style={"display": "flex"})
+                 ],style={"display": "flex"})
             ], style={"margin-bottom": "20px"}),
+                #KPIバー
+                html.Div([
+                html.Div(
+                id="progress-bar-fill",   # ← これ必須
+                className="progress-bar-fill"
+                )
+            ], className="progress-bar"),
 
             # Traffic
             html.Div([
@@ -496,23 +483,33 @@ layout = html.Div([
                 html.Span(id="roas_growth"),
                 ],style={"display": "flex"})
             ])
-        ], style={"width": "20%", "padding": "20px"}),
+        ], style={"width": "20%", "padding": "20px","margin-left":"2rem",}),
 
         # 中央
         html.Div([
+        dcc.Tabs(
+        id="tab-switch",
+        value="month",
+        children=[
+            dcc.Tab(label="MONTH", value="month"),
+            dcc.Tab(label="WEEK", value="week"),
+        ]
+        ),
+        html.Div(id="tabs-content"),
         dcc.Graph(
             id="main_line_chart",
             config={"displayModeBar": False},
             style={"width": "100%"}
         )], style={
-        "width": "55%",
-        "box-sizing": "border-box"
+        "width": "46%",
+        "box-sizing": "border-box",
+        "padding-right":"2%",
     }),
 
         # 右
         html.Div(
             dcc.Graph(id="pie_chart"),
-            style={"width": "25%"}
+            style={"width": "26%","margin-right":"3%"}
         )
 
     ], style={"display": "flex"}),
@@ -520,35 +517,35 @@ layout = html.Div([
     html.Div(
         children=[
         html.Div([
-        html.H3("Traffic"),
-        html.H4(id="kpi-traffic",style={"margin-bottom":"0"}),
+        html.H3("Traffic",style={"margin-top":"0"}),
+        html.H4(id="kpi-traffic",className="rev_growth_class"),
         html.Span(
         id="diff_traffic",
-    )
-]),
+        )
+    ],className="bottom-kpi-card"),
 
         html.Div([
-        html.H3("Conversion"),
-        html.H4(id="kpi-conversion",style={"margin-bottom":"0"}),
+        html.H3("Conversion",style={"margin-top":"0"}),
+        html.H4(id="kpi-conversion"),
         html.Span(
         id="diff_conversion",
     )
-    ]),
+    ],className="bottom-kpi-card"),
 
         html.Div([
-        html.H3("CVR"),
-        html.H4(id="kpi-cvr",style={"margin-bottom":"0"}),
+        html.H3("CVR",style={"margin-top":"0"}),
+        html.H4(id="kpi-cvr"),
         html.Span(
         id="diff_cvr",
     )
-]),
+],className="bottom-kpi-card"),
 
         html.Div([
-        html.H3("CPA"),
-        html.H4(id="kpi-cpa",style={"margin-bottom":"0"}),
+        html.H3("CPA",style={"margin-top":"0"}),
+        html.H4(id="kpi-cpa"),
         html.Span(
         id="diff_cpa",
     )
-]),],style={"display": "flex","margin-top":"2%","justify-content":"space-between","width":"70%","margin-left":"10%"})
+],className="bottom-kpi-card"),],style={"display": "flex","margin-top":"2%","justify-content":"space-between","width":"96%"})
 ])
 
