@@ -211,6 +211,11 @@ def update_dashboard(start_date, end_date, tabs):
     rev_growth_text = f"{arrow} {rev_growth*100:+.1f}%"
     rev_growth_class = get_growth_class(rev_growth)
 
+    print("rev_growth:", rev_growth)
+    print(rev_growth)
+    print(rev_growth_text)
+    print(rev_growth_class)
+
     return (
         fig,
         fig_pie,
