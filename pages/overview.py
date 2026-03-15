@@ -207,9 +207,20 @@ def update_dashboard(start_date, end_date, tabs):
     roas_growth_text = f"{roas_growth*100:+.1f}%"
     roas_growth_class = get_growth_class(roas_growth)
     #矢印を入れる
-    arrow = "↑" if rev_growth >= 0 else "↓"
-    rev_growth_text = f"{arrow} {rev_growth*100:+.1f}%"
+    #Revenueの増減の数字
+    rev_arrow = "↑" if rev_growth >= 0 else "↓"
+    rev_growth_text = f"{rev_arrow} {rev_growth*100:+.1f}%"
     rev_growth_class = get_growth_class(rev_growth)
+
+    #Trafficの増減の数字
+    traffic_arrow = "↑" if traffic_growth >= 0 else "↓"
+    traffic_growth_text = f"{traffic_arrow} {traffic_growth*100:+.1f}%"
+    traffic_growth_class = get_growth_class(traffic_growth)
+
+    #ROASの増減の数字
+    roas_arrow = "↑" if roas_growth >= 0 else "↓"
+    roas_growth_text = f"{roas_arrow} {roas_growth*100:+.1f}%"
+    roas_growth_class = get_growth_class(roas_growth)
 
     print("rev_growth:", rev_growth)
     print(rev_growth)
